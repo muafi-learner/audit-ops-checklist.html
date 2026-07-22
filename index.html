@@ -1,237 +1,3 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kintoun Executive Dashboard</title>
-    <!-- Load Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Load Chart.js untuk Grafik -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <style>
-        :root {
-            --primary-dark: #00263f;
-            --bg-cream: #eeebe1;
-            --accent-taupe: #908371;
-            --white: #ffffff;
-            --border-light: rgba(144, 131, 113, 0.3);
-            --danger-red: #ff4d4d;
-            --success-blue: #4d79ff;
-            --warning-orange: #ffa64d;
-            --purple: #b366ff;
-        }
-
-        body {
-            font-family: 'Segoe UI', 'Inter', Roboto, sans-serif;
-            background-color: var(--bg-cream);
-            color: var(--primary-dark);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .dashboard-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            border-bottom: 2px solid var(--primary-dark);
-            padding-bottom: 10px;
-        }
-
-        /* Filters */
-        .filter-bar {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filter-bar select, .filter-bar input {
-            padding: 10px;
-            border: 1px solid var(--accent-taupe);
-            border-radius: 4px;
-            background: var(--white);
-            color: var(--primary-dark);
-            font-size: 14px;
-        }
-
-        /* Grid Layout */
-        .grid-top {
-            display: grid;
-            grid-template-columns: 200px 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .grid-middle {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        .grid-bottom {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--white);
-            border: 1px solid var(--border-light);
-            border-radius: 6px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .card-title {
-            font-size: 14px;
-            color: var(--accent-taupe);
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-weight: 600;
-        }
-
-        /* Scorecards */
-        .scorecard-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .scorecard {
-            background: var(--white);
-            border: 1px solid var(--border-light);
-            border-radius: 6px;
-            padding: 20px;
-            text-align: left;
-        }
-        .scorecard h3 { margin: 0; font-size: 14px; color: var(--primary-dark); font-weight: 600; }
-        .scorecard .value { font-size: 36px; font-weight: bold; margin-top: 10px; color: var(--primary-dark); }
-        .scorecard.error-card { background: #f9f9f9; border-style: dashed; }
-
-        /* Tables */
-        .table-container {
-            overflow-x: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-light);
-        }
-        th {
-            background-color: var(--primary-dark);
-            color: var(--bg-cream);
-            font-weight: 600;
-        }
-        tr:hover { background-color: #f5f5f5; }
-
-        @media (max-width: 900px) {
-            .grid-top { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-
-<div class="dashboard-container">
-    <div class="header-title">DASBOARD OPERATION CHECKLIST</div>
-
-    <!-- Filter Bar (Statis untuk UI saat ini) -->
-    <div class="filter-bar">
-        <input type="date" id="filter-date">
-        <select><option>Kode Store</option><option>MLGGAL</option><option>KDRERL</option><option>TLGDIP</option></select>
-        <select><option>Role</option><option>Checker</option><option>Barista</option></select>
-        <select><option>Kategori Tugas</option><option>Opening Task</option><option>Daily Task</option></select>
-        <button onclick="loadDashboardData()" style="padding: 10px 15px; background: var(--primary-dark); color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh Data</button>
-    </div>
-
-    <!-- Top Section: Scorecards & Charts -->
-    <div class="grid-top">
-        <!-- Scorecards -->
-        <div class="scorecard-group">
-            <div class="scorecard">
-                <h3>Total Aktifitas</h3>
-                <div class="value" id="val-total-aktifitas">0</div>
-            </div>
-            <div class="scorecard error-card">
-                <h3>Issue Percentage</h3>
-                <div class="value" id="val-issue-percent">0%</div>
-            </div>
-            <div class="scorecard">
-                <h3>Total Isu</h3>
-                <div class="value" id="val-total-isu">0</div>
-            </div>
-        </div>
-
-        <!-- Bar Chart -->
-        <div class="card">
-            <h3 class="card-title">Kedisiplinan Antar Cabang</h3>
-            <canvas id="barChart"></canvas>
-        </div>
-
-        <!-- Donut Chart -->
-        <div class="card">
-            <h3 class="card-title">Kendala Terbanyak</h3>
-            <canvas id="donutChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Middle Section: Line Chart -->
-    <div class="grid-middle">
-        <div class="card">
-            <h3 class="card-title">Tren Isu Harian</h3>
-            <canvas id="lineChart" style="max-height: 250px;"></canvas>
-        </div>
-    </div>
-
-    <!-- Bottom Section: Tables -->
-    <div class="grid-bottom">
-        <div class="card">
-            <h3 class="card-title">Tabel Log Isu</h3>
-            <div class="table-container">
-                <table id="issue-table">
-                    <thead>
-                        <tr>
-                            <th>created_at</th>
-                            <th>store_code</th>
-                            <th>role</th>
-                            <th>task_name</th>
-                            <th>crew_note</th>
-                            <th>sup_note</th>
-                        </tr>
-                    </thead>
-                    <tbody><!-- Data injected via JS --></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3 class="card-title">Tabel Log Harian</h3>
-            <div class="table-container">
-                <table id="daily-table">
-                    <thead>
-                        <tr>
-                            <th>created_at</th>
-                            <th>store_code</th>
-                            <th>role</th>
-                            <th>task_category</th>
-                            <th>crew_pic</th>
-                            <th>sup_pic</th>
-                        </tr>
-                    </thead>
-                    <tbody><!-- Data injected via JS --></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
     // ==========================================
     // 1. KREDENSIAL SUPABASE
@@ -239,38 +5,64 @@
     const SUPABASE_URL = 'https://rqtysqrmmmuuukbhtqqw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdHlzcXJtbW11dXVrYmh0cXF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NDUyOTQsImV4cCI6MjA5OTMyMTI5NH0.hd5hXItnRvcqBzbRSCBLFyok-mWKBxCfTfN9RCRS0Q8';
     
-    // GANTI NAMA VARIABELNYA DI SINI
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Variabel global untuk menyimpan instance grafik (agar bisa di-update)
+    // Variabel global untuk menyimpan instance grafik
     let chartInstances = {};
 
     // ==========================================
-    // 2. FUNGSI UTAMA PENGAMBILAN & PENGOLAHAN DATA
+    // 2. FUNGSI UTAMA PENGAMBILAN & FILTER DATA
     // ==========================================
     async function loadDashboardData() {
         try {
-            // PASTIKAN MENGGUNAKAN supabaseClient DI DUA BARIS INI
-            const { data: masterData, error: errMaster } = await supabaseClient.from('master_checklist').select('*').order('created_at', { ascending: false });
-            const { data: issueData, error: errIssue } = await supabaseClient.from('issue_log').select('*').order('created_at', { ascending: false });
+            // Ambil Nilai dari Input Filter HTML
+            const filterDate = document.getElementById('filter-date').value; 
+            const filterStore = document.getElementById('filter-store').value;
+            const filterRole = document.getElementById('filter-role').value;
+            const filterCategory = document.getElementById('filter-category').value;
+
+            // Tarik Data Mentah dari Supabase
+            const { data: rawMasterData, error: errMaster } = await supabaseClient.from('master_checklist').select('*').order('created_at', { ascending: false });
+            const { data: rawIssueData, error: errIssue } = await supabaseClient.from('issue_log').select('*').order('created_at', { ascending: false });
 
             if (errMaster) throw errMaster;
             if (errIssue) throw errIssue;
 
-            // 1. Update Scorecards
-            const totalAktifitas = masterData ? masterData.length : 0;
-            const totalIsu = issueData ? issueData.length : 0;
+            // Proses Penyaringan (Filtering) Data Master
+            const masterData = (rawMasterData || []).filter(row => {
+                let matchDate = true, matchStore = true, matchRole = true, matchCategory = true;
+                
+                if (filterDate && row.created_at) matchDate = row.created_at.substring(0, 10) === filterDate;
+                if (filterStore) matchStore = row.store_code === filterStore;
+                if (filterRole) matchRole = row.role === filterRole;
+                if (filterCategory) matchCategory = row.task_category === filterCategory;
+                
+                return matchDate && matchStore && matchRole && matchCategory;
+            });
+
+            // Proses Penyaringan (Filtering) Data Issue
+            const issueData = (rawIssueData || []).filter(row => {
+                let matchDate = true, matchStore = true, matchRole = true;
+                
+                if (filterDate && row.created_at) matchDate = row.created_at.substring(0, 10) === filterDate;
+                if (filterStore) matchStore = row.store_code === filterStore;
+                if (filterRole) matchRole = row.role === filterRole;
+                
+                return matchDate && matchStore && matchRole;
+            });
+
+            // Update Scorecards
+            const totalAktifitas = masterData.length;
+            const totalIsu = issueData.length;
             const issuePercent = totalAktifitas > 0 ? ((totalIsu / totalAktifitas) * 100).toFixed(1) : 0;
 
             document.getElementById('val-total-aktifitas').innerText = totalAktifitas;
             document.getElementById('val-total-isu').innerText = totalIsu;
             document.getElementById('val-issue-percent').innerText = issuePercent + '%';
 
-            // 2. Update Tables
+            // Update Tables & Charts
             renderIssueTable(issueData);
             renderDailyTable(masterData);
-
-            // 3. Process Data for Charts
             processBarChartData(masterData);
             processDonutChartData(issueData);
             processLineChartData(issueData);
@@ -285,9 +77,6 @@
     // 3. RENDER GRAFIK (CHART.JS)
     // ==========================================
     function processBarChartData(masterData) {
-        if (!masterData) return;
-        
-        // Menghitung Kedisiplinan per Cabang
         const storeStats = {};
         masterData.forEach(row => {
             const store = row.store_code || 'Unknown';
@@ -308,54 +97,41 @@
                 { label: 'Tepat Waktu', data: dataTepat, backgroundColor: '#4d79ff' }
             ]
         }, {
-            indexAxis: 'y', // Membuat bar menjadi horizontal seperti di Looker
+            indexAxis: 'y',
             scales: { x: { stacked: true }, y: { stacked: true } }
         });
     }
 
     function processDonutChartData(issueData) {
-        if (!issueData) return;
-
-        // Menghitung Kendala Terbanyak
         const taskCounts = {};
         issueData.forEach(row => {
             const task = row.task_name || 'Lainnya';
             taskCounts[task] = (taskCounts[task] || 0) + 1;
         });
 
-        const labels = Object.keys(taskCounts);
-        const data = Object.values(taskCounts);
-        const colors = ['#b366ff', '#ffa64d', '#ff4d4d', '#4d79ff', '#00263f'];
-
         renderChart('donutChart', 'doughnut', {
-            labels: labels,
-            datasets: [{ data: data, backgroundColor: colors }]
+            labels: Object.keys(taskCounts),
+            datasets: [{ data: Object.values(taskCounts), backgroundColor: ['#b366ff', '#ffa64d', '#ff4d4d', '#4d79ff', '#00263f'] }]
         }, {
             plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: {size: 10} } } }
         });
     }
 
     function processLineChartData(issueData) {
-        if (!issueData) return;
-
-        // Mengelompokkan Isu Berdasarkan Tanggal
         const dateCounts = {};
-        // Urutkan dari yang paling lama ke terbaru untuk grafik garis
         const sortedData = [...issueData].reverse(); 
         
         sortedData.forEach(row => {
+            if(!row.created_at) return;
             const dateOnly = new Date(row.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'});
             dateCounts[dateOnly] = (dateCounts[dateOnly] || 0) + 1;
         });
 
-        const labels = Object.keys(dateCounts);
-        const data = Object.values(dateCounts);
-
         renderChart('lineChart', 'line', {
-            labels: labels,
+            labels: Object.keys(dateCounts),
             datasets: [{
                 label: 'Record Count',
-                data: data,
+                data: Object.values(dateCounts),
                 borderColor: '#4d79ff',
                 backgroundColor: 'rgba(77, 121, 255, 0.1)',
                 fill: true,
@@ -369,19 +145,12 @@
 
     function renderChart(canvasId, type, data, options = {}) {
         const ctx = document.getElementById(canvasId).getContext('2d');
-        
-        // Hancurkan instance chart lama jika sudah ada (agar tidak tumpah tindih saat refresh)
-        if (chartInstances[canvasId]) {
-            chartInstances[canvasId].destroy();
-        }
+        if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
 
         chartInstances[canvasId] = new Chart(ctx, {
             type: type,
             data: data,
-            options: {
-                responsive: true,
-                ...options
-            }
+            options: { responsive: true, ...options }
         });
     }
 
@@ -391,16 +160,14 @@
     function renderIssueTable(data) {
         const tbody = document.querySelector('#issue-table tbody');
         tbody.innerHTML = '';
-        if(!data) return;
-
-        data.slice(0, 10).forEach(row => { // Menampilkan 10 isu terbaru
-            const date = new Date(row.created_at).toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+        data.slice(0, 10).forEach(row => {
+            const date = row.created_at ? new Date(row.created_at).toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
             tbody.innerHTML += `
                 <tr>
                     <td>${date}</td>
-                    <td>${row.store_code}</td>
-                    <td>${row.role}</td>
-                    <td>${row.task_name}</td>
+                    <td>${row.store_code || '-'}</td>
+                    <td>${row.role || '-'}</td>
+                    <td>${row.task_name || '-'}</td>
                     <td>${row.crew_note || '-'}</td>
                     <td>${row.sup_note || '-'}</td>
                 </tr>
@@ -411,26 +178,21 @@
     function renderDailyTable(data) {
         const tbody = document.querySelector('#daily-table tbody');
         tbody.innerHTML = '';
-        if(!data) return;
-
-        data.slice(0, 10).forEach(row => { // Menampilkan 10 aktifitas terbaru
-            const date = new Date(row.created_at).toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+        data.slice(0, 10).forEach(row => {
+            const date = row.created_at ? new Date(row.created_at).toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
             tbody.innerHTML += `
                 <tr>
                     <td>${date}</td>
-                    <td>${row.store_code}</td>
-                    <td>${row.role}</td>
-                    <td>${row.task_category}</td>
-                    <td>${row.crew_pic}</td>
-                    <td>${row.sup_pic}</td>
+                    <td>${row.store_code || '-'}</td>
+                    <td>${row.role || '-'}</td>
+                    <td>${row.task_category || '-'}</td>
+                    <td>${row.crew_pic || '-'}</td>
+                    <td>${row.sup_pic || '-'}</td>
                 </tr>
             `;
         });
     }
 
-    // Jalankan saat halaman pertama kali dimuat
+    // Load data otomatis saat pertama kali dibuka
     window.onload = loadDashboardData;
 </script>
-
-</body>
-</html>
