@@ -165,20 +165,18 @@
     // 1. MASUKKAN KREDENSIAL SUPABASE ANDA DI SINI
     // ==========================================
     const SUPABASE_URL = 'https://rqtysqrmmmuuukbhtqqw.supabase.co';
-    // Gunakan 'anon' / 'public' key (BUKAN service_role key!)
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdHlzcXJtbW11dXVrYmh0cXF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NDUyOTQsImV4cCI6MjA5OTMyMTI5NH0.hd5hXItnRvcqBzbRSCBLFyok-mWKBxCfTfN9RCRS0Q8';
     
-    // Inisialisasi Supabase Client
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // NAMA VARIABEL DIUBAH MENJADI supabaseClient (agar tidak bentrok)
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function fetchData() {
         const container = document.getElementById('dashboard-container');
         container.innerHTML = '<div class="loading">Mengambil data dari server...</div>';
 
         try {
-            // Mengambil 20 data terbaru dari tabel master_checklist
-            // Asumsi nama tabel Anda adalah 'master_checklist'
-            const { data, error } = await supabase
+            // Gunakan supabaseClient di sini
+            const { data, error } = await supabaseClient
                 .from('master_checklist')
                 .select('*')
                 .order('created_at', { ascending: false })
@@ -188,7 +186,7 @@
 
             container.innerHTML = '';
             
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 container.innerHTML = '<div class="loading">Belum ada data tervalidasi.</div>';
                 return;
             }
@@ -205,14 +203,12 @@
         const card = document.createElement('div');
         card.className = 'card';
 
-        // Ekstrak URL Gambar dari field JSON checklist_data
         let imagesHtml = '';
         let imageFound = false;
 
         if (record.checklist_data) {
             for (const key in record.checklist_data) {
                 const value = record.checklist_data[key];
-                // Jika value adalah Array dan isinya adalah URL Supabase (dimulai dengan http)
                 if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && value[0].startsWith('http')) {
                     imageFound = true;
                     value.forEach(imgUrl => {
@@ -227,7 +223,6 @@
                <div class="gallery-grid">${imagesHtml}</div>` 
             : `<div class="gallery-title" style="color:var(--accent-taupe)">Tidak ada lampiran foto</div>`;
 
-        // Waktu format rapi
         const dateObj = new Date(record.created_at || record.timestamp);
         const formattedDate = dateObj.toLocaleString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
@@ -258,7 +253,6 @@
         container.appendChild(card);
     }
 
-    // Fungsi Lightbox
     function openLightbox(imgSrc) {
         document.getElementById('lightbox-img').src = imgSrc;
         document.getElementById('lightbox').style.display = 'flex';
@@ -268,7 +262,6 @@
         document.getElementById('lightbox').style.display = 'none';
     }
 
-    // Load data otomatis saat halaman dibuka
     window.onload = fetchData;
 </script>
 
