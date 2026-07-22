@@ -239,7 +239,8 @@
     const SUPABASE_URL = 'https://rqtysqrmmmuuukbhtqqw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdHlzcXJtbW11dXVrYmh0cXF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NDUyOTQsImV4cCI6MjA5OTMyMTI5NH0.hd5hXItnRvcqBzbRSCBLFyok-mWKBxCfTfN9RCRS0Q8';
     
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // GANTI NAMA VARIABELNYA DI SINI
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Variabel global untuk menyimpan instance grafik (agar bisa di-update)
     let chartInstances = {};
@@ -249,9 +250,9 @@
     // ==========================================
     async function loadDashboardData() {
         try {
-            // Tarik data dari kedua tabel
-            const { data: masterData, error: errMaster } = await supabase.from('master_checklist').select('*').order('created_at', { ascending: false });
-            const { data: issueData, error: errIssue } = await supabase.from('issue_log').select('*').order('created_at', { ascending: false });
+            // PASTIKAN MENGGUNAKAN supabaseClient DI DUA BARIS INI
+            const { data: masterData, error: errMaster } = await supabaseClient.from('master_checklist').select('*').order('created_at', { ascending: false });
+            const { data: issueData, error: errIssue } = await supabaseClient.from('issue_log').select('*').order('created_at', { ascending: false });
 
             if (errMaster) throw errMaster;
             if (errIssue) throw errIssue;
