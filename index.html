@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kintoun Audit Dashboard</title>
+    <!-- Load Supabase JS via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary-dark: #00263f;
+            --bg-cream: #eeebe1;
+            --accent-taupe: #908371;
+            --white: #ffffff;
+            --border-light: rgba(144, 131, 113, 0.3);
+            --danger-red: #c0392b;
+            --success-green: #27ae60;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', Roboto, sans-serif;
+            background-color: var(--bg-cream);
+            color: var(--primary-dark);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            max-width: 1000px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid var(--primary-dark);
+            padding-bottom: 15px;
+        }
+
+        .header h1 { margin: 0; font-size: 24px; }
+        .header button {
+            background-color: var(--primary-dark);
+            color: var(--bg-cream);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--white);
+            border: 1px solid var(--accent-taupe);
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 10px;
+        }
+
+        .store-badge {
+            background: var(--accent-taupe);
+            color: var(--white);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .card-title { margin: 10px 0 5px 0; font-size: 18px; font-weight: 600; }
+        .card-meta { font-size: 13px; color: #555; margin-bottom: 15px; }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed var(--border-light);
+        }
+        .data-row:last-child { border-bottom: none; }
+        
+        .val-status {
+            font-weight: bold;
+            color: var(--success-green);
+        }
+
+        .gallery-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+            color: var(--primary-dark);
+            text-transform: uppercase;
+        }
+
+        .gallery-grid {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .gallery-grid img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--accent-taupe);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .gallery-grid img:hover { transform: scale(1.05); }
+
+        /* Lightbox untuk Zoom Gambar */
+        #lightbox {
+            display: none; position: fixed; z-index: 999;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,38,63,0.9);
+            justify-content: center; align-items: center;
+        }
+        #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+        #lightbox-close {
+            position: absolute; top: 20px; right: 30px;
+            color: white; font-size: 30px; cursor: pointer; font-weight: bold;
+        }
+
+        .loading { text-align: center; padding: 50px; font-size: 18px; grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Audit & Monitoring Operasional</h1>
+            <small>Menampilkan laporan tervalidasi terbaru</small>
+        </div>
+        <button onclick="fetchData()">🔄 Refresh Data</button>
+    </div>
+
+    <div class="container" id="dashboard-container">
+        <div class="loading">Mengambil data dari server...</div>
+    </div>
+
+    <!-- Lightbox Element -->
+    <div id="lightbox" onclick="closeLightbox()">
+        <span id="lightbox-close">&times;</span>
+        <img id="lightbox-img" src="" alt="Zoom Foto">
+    </div>
+
+<script>
+    // ==========================================
+    // 1. MASUKKAN KREDENSIAL SUPABASE ANDA DI SINI
+    // ==========================================
+    const SUPABASE_URL = 'https://rqtysqrmmmuuukbhtqqw.supabase.co';
+    // Gunakan 'anon' / 'public' key (BUKAN service_role key!)
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdHlzcXJtbW11dXVrYmh0cXF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NDUyOTQsImV4cCI6MjA5OTMyMTI5NH0.hd5hXItnRvcqBzbRSCBLFyok-mWKBxCfTfN9RCRS0Q8';
+    
+    // Inisialisasi Supabase Client
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function fetchData() {
+        const container = document.getElementById('dashboard-container');
+        container.innerHTML = '<div class="loading">Mengambil data dari server...</div>';
+
+        try {
+            // Mengambil 20 data terbaru dari tabel master_checklist
+            // Asumsi nama tabel Anda adalah 'master_checklist'
+            const { data, error } = await supabase
+                .from('master_checklist')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+
+            container.innerHTML = '';
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="loading">Belum ada data tervalidasi.</div>';
+                return;
+            }
+
+            data.forEach(record => renderCard(record, container));
+
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            container.innerHTML = `<div class="loading" style="color:red;">Gagal mengambil data: ${error.message}</div>`;
+        }
+    }
+
+    function renderCard(record, container) {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        // Ekstrak URL Gambar dari field JSON checklist_data
+        let imagesHtml = '';
+        let imageFound = false;
+
+        if (record.checklist_data) {
+            for (const key in record.checklist_data) {
+                const value = record.checklist_data[key];
+                // Jika value adalah Array dan isinya adalah URL Supabase (dimulai dengan http)
+                if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && value[0].startsWith('http')) {
+                    imageFound = true;
+                    value.forEach(imgUrl => {
+                        imagesHtml += `<img src="${imgUrl}" onclick="openLightbox('${imgUrl}')" alt="Bukti Task">`;
+                    });
+                }
+            }
+        }
+
+        const gallerySection = imageFound 
+            ? `<div class="gallery-title">Bukti Foto / Lampiran</div>
+               <div class="gallery-grid">${imagesHtml}</div>` 
+            : `<div class="gallery-title" style="color:var(--accent-taupe)">Tidak ada lampiran foto</div>`;
+
+        // Waktu format rapi
+        const dateObj = new Date(record.created_at || record.timestamp);
+        const formattedDate = dateObj.toLocaleString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+        card.innerHTML = `
+            <div class="card-header">
+                <span class="store-badge">${record.store_code || 'N/A'}</span>
+                <span class="val-status">Tervalidasi ✅</span>
+            </div>
+            <h3 class="card-title">${record.role} - ${record.task_category}</h3>
+            <div class="card-meta">📅 ${formattedDate}</div>
+            
+            <div class="data-row">
+                <span><strong>Kru (PIC):</strong></span>
+                <span>${(record.crew_pic || 'Tidak diketahui').toUpperCase()}</span>
+            </div>
+            <div class="data-row">
+                <span><strong>Supervisor:</strong></span>
+                <span>${(record.sup_pic || 'Tidak diketahui').toUpperCase()}</span>
+            </div>
+            <div class="data-row">
+                <span><strong>Ketepatan Waktu:</strong></span>
+                <span style="color: ${record.status_waktu === 'Telat' ? 'var(--danger-red)' : 'var(--success-green)'}">${record.status_waktu}</span>
+            </div>
+
+            ${gallerySection}
+        `;
+
+        container.appendChild(card);
+    }
+
+    // Fungsi Lightbox
+    function openLightbox(imgSrc) {
+        document.getElementById('lightbox-img').src = imgSrc;
+        document.getElementById('lightbox').style.display = 'flex';
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightbox').style.display = 'none';
+    }
+
+    // Load data otomatis saat halaman dibuka
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>
